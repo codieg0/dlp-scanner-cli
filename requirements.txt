@@ -1,0 +1,6 @@
+colorama
+pandas
+PyPDF2
+beautifulsoup4
+extract-msg
+python-docx
