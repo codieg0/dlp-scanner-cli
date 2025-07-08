@@ -16,7 +16,7 @@
  
 
 3. **Install dependencies**
-  - Download requirements.txt
+  - Download `requirements.txt`
    - Open PowerShell in your project folder and run:
      ```powershell
      python.exe -m pip install requirements.txt
@@ -51,7 +51,7 @@ PS > py.exe .\dlp_email_scanner.py .\attachments\cc.eml --scan ssn cc
 **Note**: It is optional to use the dictionary. If you want to use it, you will need to use: `--scan dict`.
 This option will show you for the dictionaries you want to check against.
 
-## Notes
+### Notes
 
 - **DO NOT** provide the output to the customer. The output is for **internal** use only.
 
