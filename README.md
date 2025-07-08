@@ -7,13 +7,13 @@
    - **Important:** Add Python to PATH during installation.
 
 2. **Prepare your workspace**
-   - Create a folder on your Desktop (e.g., `dlp_scanner`).
-   - Save the script (`dlp_email_scanner.py`).
-   - Download the dictionary from **Wiki**.
-   - This one-liner should create the folders in Desktop
+  - This one-liner should create the folders in Desktop
       ```bash
       New-Item -Path "C:\Users\$env:USERNAME\Desktop\DLP\attachments" -ItemType Directory
       ```
+  - Save the script in the newly created folder (`dlp_email_scanner.py`).
+  - Download the dictionary from **Wiki**.
+ 
 
 3. **Install dependencies**
   - Download requirements.txt
@@ -66,8 +66,8 @@ This option will show you for the dictionaries you want to check against.
     ```
 
 - Make sure to use the correct Python version (3.x) to run the script. If you have multiple versions installed, use `py.exe` or specify the full path to the Python 3 executable.
-- The script scans for sensitive information based on the terms defined in `SmartIDDictionaryTerms.xlsx`. It will output matches found in the email body or attachments. So please verify the rule and the terms that are triggering in the email.
-- The script can handle various file types, including `.eml`, `.pdf`, `.docx`, and `.xlsx`. Ensure that the attachments are in the `attachments` folder.
+- The script scans for sensitive information based on the terms defined in `dlp_terms.json`. It will output matches found in the email body or attachments. So please verify the rule and the terms that are triggering in the email.
+- The script can handle various file types, including `.eml`, `.pdf`, `.docx`, `.txt`, `.zip`. 🚧 Soon: `.rar`, `.msg`, `.html`, `.csv`. Ensure that the attachments are in the `attachments` folder. 
 - **Validate SSN:** [ssnregistry.org/validate](https://www.ssnregistry.org/validate/)
 - **Validate Credit Cards:** [validcreditcardnumber.com](https://www.validcreditcardnumber.com/)
 - **Validate NDC:** [dps.fda.gov/ndc](https://dps.fda.gov/ndc/)
