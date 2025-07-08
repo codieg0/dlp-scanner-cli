@@ -3,3 +3,4 @@ PyPDF2
 beautifulsoup4
 python-docx
 openpyxl 
+colorama

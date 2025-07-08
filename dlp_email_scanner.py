@@ -1,6 +1,5 @@
-# Done with Github copilot - I did some little bits.
-# Will add more functionalities
- 
+#!/usr/bin/env python3
+
 import os
 import sys
 import re
@@ -14,22 +13,48 @@ import PyPDF2
 import argparse
 from bs4 import BeautifulSoup
 import json
+from colorama import init, Fore, Style
+
+# Initialize colorama for colored output
+init(autoreset=True)
 
 # --- Load Dictionary Terms from json file ---
-def load_dlp_dict(json_path):
+def load_dlp_categories(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    dlp_dict = {}
-    for category, terms in data.items():
-        for term in terms:
-            dlp_dict[term.strip()] = category
-    return dlp_dict
+        return json.load(f)
+
+def choose_categories(term_data):
+    categories = list(term_data.keys())
+    print("\nAvailable Categories:")
+    for idx, cat in enumerate(categories, 1):
+        print(f"  {idx}. {cat}")
+
+    choice = input("\nEnter category numbers to enable (comma-separated, or 'all'): ").strip().lower()
+    selected_terms = {}
+
+    if choice == 'all':
+        for cat in categories:
+            for term in term_data[cat]:
+                selected_terms[term.strip()] = cat
+    else:
+        try:
+            indices = [int(x.strip()) - 1 for x in choice.split(",")]
+            for idx in indices:
+                if 0 <= idx < len(categories):
+                    cat = categories[idx]
+                    for term in term_data[cat]:
+                        selected_terms[term.strip()] = cat
+        except Exception:
+            print("Invalid selection. Exiting.")
+            sys.exit(1)
+
+    print(f"\nSelected {len(set([cat for _, cat in selected_terms.items()]))} categories with {len(selected_terms)} terms total.")
+    return selected_terms
 
 # --- Dictionary-based term search ---
 def find_dlp_terms(text, dlp_dict):
     found = []
     for term, category in dlp_dict.items():
-        # Remove word boundaries to allow matching terms with special characters
         pattern = re.compile(re.escape(term), re.IGNORECASE)
         if pattern.search(text):
             found.append((term, category))
@@ -58,12 +83,12 @@ def luhn_check(card_number):
 
 def find_credit_cards(text):
     cc_patterns = [
-        r'\b3[47]\d{13}\b',                     # Amex
-        r'\b3(0[0-5]|[68]\d)\d{11}\b',          # Diners Club
-        r'\b6011\d{12}\b',                      # Discover
-        r'\b5[1-5]\d{14}\b',                    # MasterCard
-        r'\b62\d{14}\b',                        # Union Pay
-        r'\b4\d{12}(\d{3})?\b'                  # Visa
+        r'\b3[47]\d{13}\b',
+        r'\b3(0[0-5]|[68]\d)\d{11}\b',
+        r'\b6011\d{12}\b',
+        r'\b5[1-5]\d{14}\b',
+        r'\b62\d{14}\b',
+        r'\b4\d{12}(\d{3})?\b'
     ]
     found = set()
     for pattern in cc_patterns:
@@ -122,7 +147,6 @@ def process_attachment(filename, payload):
         elif ext == 'rtf':
             with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
                 raw = f.read()
-                # Basic RTF text cleaner: remove RTF control words
                 return re.sub(r'{\\[^{}]+}|\\[a-z]+\d* ?|[{}]', '', raw)
         elif ext == 'txt':
             with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -132,7 +156,7 @@ def process_attachment(filename, payload):
     except Exception:
         return ""
 
-# --- EML email processing ---
+# --- EML processing ---
 def process_eml(eml_path, dlp_dict, check_dict=True, check_ssn=True, check_cc=True, check_dl=True):
     results = []
     with open(eml_path, 'rb') as f:
@@ -164,7 +188,7 @@ def process_standalone_file(file_path, dlp_dict, check_dict=True, check_ssn=True
     text = process_attachment(file_path, payload)
     return scan_text(text, os.path.basename(file_path), dlp_dict, check_dict, check_ssn, check_cc, check_dl)
 
-# --- Central scan function for all text blocks ---
+# --- Central scan function ---
 def scan_text(text, label, dlp_dict, check_dict=True, check_ssn=True, check_cc=True, check_dl=True):
     results = []
     if check_dict and dlp_dict:
@@ -182,25 +206,40 @@ def scan_text(text, label, dlp_dict, check_dict=True, check_ssn=True, check_cc=T
             results.append({"where": label, "matches": [(lic, "US Driver License")]})
     return results
 
-# --- Main driver ---
 def print_matches(filename, results):
-    if results:
-        print(f"\n{filename}")
-        for item in results:
-            for term, category in item['matches']:
-                print(f"  {item['where']}: {term}  [category: {category}]")
+    if not results:
+        return
+
+    print(f"\n{Fore.CYAN + Style.BRIGHT}📧 {filename}{Style.RESET_ALL}")
+
+    # Group by where
+    grouped = {}
+    for item in results:
+        location = item["where"]
+        grouped.setdefault(location, []).extend(item["matches"])
+
+    # BODY
+    if "[EMAIL_BODY]" in grouped:
+        print(f"  {Fore.YELLOW}BODY:{Style.RESET_ALL}")
+        for term, category in grouped["[EMAIL_BODY]"]:
+            print(f"    • {Fore.GREEN}{term:<22}{Style.RESET_ALL} [{Fore.MAGENTA}{category}{Style.RESET_ALL}]")
+        del grouped["[EMAIL_BODY]"]
+        print()
+
+    # Attachments
+    for attachment_name in sorted(grouped.keys()):
+        print(f"  {Fore.YELLOW}📎 Attachment: {attachment_name}{Style.RESET_ALL}")
+        for term, category in grouped[attachment_name]:
+            print(f"    • {Fore.GREEN}{term:<22}{Style.RESET_ALL} [{Fore.MAGENTA}{category}{Style.RESET_ALL}]")
+        print()
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="DLP Email/File Scanner",
-        usage="dlp_email_scanner.py [dict_path] input_path [--scan [{ssn,cc,dl,dict} ...]]"
-    )
+    parser = argparse.ArgumentParser(description="DLP Email/File Scanner")
     parser.add_argument("dict_path", nargs="?", help="dlp_terms.json (required if scanning for dict terms)")
-    parser.add_argument("input_path", help="emails_folder_or_eml_file_or_attachment")
+    parser.add_argument("input_path", help="email or folder")
     parser.add_argument("--scan", nargs="*", choices=["ssn", "cc", "dl", "dict"], help="What to scan for (default: all)")
     args = parser.parse_args()
 
-    # Determine what to scan for
     if args.scan is not None and len(args.scan) > 0:
         check_dict = "dict" in args.scan
         check_ssn = "ssn" in args.scan
@@ -209,15 +248,18 @@ def parse_args():
     else:
         check_dict = check_ssn = check_cc = check_dl = True
 
-    # If dict scan is requested, dict_path must be provided
     if check_dict and not args.dict_path:
         parser.error("Dictionary path is required when scanning for dict terms (--scan dict)")
-
     return args, check_dict, check_ssn, check_cc, check_dl
 
 def main():
     args, check_dict, check_ssn, check_cc, check_dl = parse_args()
-    dlp_dict = load_dlp_dict(args.dict_path) if check_dict and args.dict_path else {}
+    if check_dict and args.dict_path:
+        term_data = load_dlp_categories(args.dict_path)
+        dlp_dict = choose_categories(term_data)
+    else:
+        dlp_dict = {}
+
     input_path = args.input_path
     if os.path.isdir(input_path):
         all_files = [os.path.join(input_path, f) for f in os.listdir(input_path)]
@@ -233,6 +275,7 @@ def main():
     else:
         print("Invalid input path.")
         sys.exit(1)
+
     for eml_file in eml_files:
         results = process_eml(eml_file, dlp_dict, check_dict, check_ssn, check_cc, check_dl)
         print_matches(os.path.basename(eml_file), results)
