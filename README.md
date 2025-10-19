@@ -19,7 +19,7 @@
   - Download `requirements.txt`
    - Open PowerShell in your project folder and run:
      ```powershell
-     python.exe -m pip install requirements.txt
+     python.exe -m pip install -r requirements.txt
      ```
 
 ### Usage
